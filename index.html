@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auth-Poll-App Web UI (Đăng ký + Đăng nhập + Admin/User)</title>
+
+  <!-- Chart.js CDN (dùng để vẽ Pie Chart) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="container">
+    <!-- === Phần Header (kèm Logout khi đã đăng nhập) === -->
+    <header>
+      <h1>Poll App</h1>
+      <div id="user-info" class="hidden">
+        Xin chào, <span id="username-display"></span>
+        (<span id="role-display"></span>)
+        | <a href="#" id="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <!-- === Phần Login Form === -->
+    <section id="login-section">
+      <h2>Đăng nhập</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-username">Username:</label>
+          <input type="text" id="login-username" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password:</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <button type="submit">Login</button>
+      </form>
+      <p id="login-error" class="error-message"></p>
+      <p class="toggle-message">
+        Bạn chưa có tài khoản? 
+        <a href="#" id="show-register-link">Đăng ký</a>
+      </p>
+    </section>
+
+    <!-- === Phần Register Form (ẩn mặc định) === -->
+    <section id="register-section" class="hidden">
+      <h2>Đăng ký</h2>
+      <form id="register-form">
+        <div class="form-group">
+          <label for="register-username">Username:</label>
+          <input type="text" id="register-username" required>
+        </div>
+        <div class="form-group">
+          <label for="register-email">Email:</label>
+          <input type="email" id="register-email" required>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Password:</label>
+          <input type="password" id="register-password" required>
+        </div>
+        <button type="submit">Register</button>
+      </form>
+      <p id="register-error" class="error-message"></p>
+      <p class="toggle-message">
+        Bạn đã có tài khoản? 
+        <a href="#" id="show-login-link">Đăng nhập</a>
+      </p>
+    </section>
+
+    <!-- === Phần List Polls (ẩn khi chưa login) === -->
+    <section id="polls-list-section" class="hidden">
+      <div class="list-header">
+        <h2>Danh sách Poll</h2>
+        <!-- Nút Create Poll chỉ hiển thị khi admin -->
+        <button id="show-create-poll-btn" class="hidden admin-btn">+ Create Poll</button>
+      </div>
+
+      <!-- Form Tạo / Chỉnh sửa Poll (ẩn mặc định) -->
+      <div id="admin-poll-form-section" class="hidden">
+        <h3 id="form-title">Tạo Poll mới</h3>
+        <form id="admin-poll-form">
+          <input type="hidden" id="edit-poll-id" value="" />
+          <div class="form-group">
+            <label for="poll-title-input">Title:</label>
+            <input type="text" id="poll-title-input" required>
+          </div>
+          <div class="form-group">
+            <label for="poll-desc-input">Description:</label>
+            <textarea id="poll-desc-input" rows="2"></textarea>
+          </div>
+          <div id="options-input-group">
+            <div class="form-group">
+              <label>Option 1:</label>
+              <input type="text" class="poll-option-input" required>
+            </div>
+            <div class="form-group">
+              <label>Option 2:</label>
+              <input type="text" class="poll-option-input" required>
+            </div>
+          </div>
+          <button type="button" id="add-option-btn">Thêm Option</button>
+          <div class="form-group">
+            <label for="poll-expires-input">Expires At (optional):</label>
+            <input type="datetime-local" id="poll-expires-input">
+          </div>
+          <button type="submit" id="submit-poll-btn">Create Poll</button>
+          <button type="button" id="cancel-poll-btn">Cancel</button>
+        </form>
+        <p id="admin-poll-error" class="error-message"></p>
+        <hr>
+      </div>
+
+      <div id="pagination-controls">
+        <button id="prev-page-btn">« Prev</button>
+        <span>Page <span id="current-page">1</span></span>
+        <button id="next-page-btn">Next »</button>
+      </div>
+
+      <table id="polls-table">
+        <thead>
+          <tr>
+            <th>Tiêu đề</th>
+            <th>Người tạo</th>
+            <th>Created At</th>
+            <th>Locked</th>
+            <th>Tổng Votes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dữ liệu sẽ đổ vào đây bằng JS -->
+        </tbody>
+      </table>
+      <p id="polls-error" class="error-message"></p>
+    </section>
+
+    <!-- === Phần Chi tiết Poll (ẩn khi chưa chọn) === -->
+    <section id="poll-detail-section" class="hidden">
+      <button id="back-to-list-btn">← Back to List</button>
+      <h2 id="detail-title">Loading...</h2>
+      <p class="meta">
+        by <span id="detail-creator"></span> • <span id="detail-createdAt"></span>
+        <span id="detail-locked" class="locked-label"></span>
+      </p>
+      <p id="detail-description" class="description"></p>
+      <div id="options-container">
+        <!-- Các option + progress bar sẽ đổ vào đây -->
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="detail-pie-chart"></canvas>
+      </div>
+      <p id="detail-total-votes">Total votes: 0</p>
+      <p id="detail-error" class="error-message"></p>
+      <!-- Nút Vote/Unvote sẽ hiện theo trạng thái của user -->
+      <div id="vote-actions"></div>
+    </section>
+  </div>
+
+  <!-- JavaScript chính -->
+  <script src="script.js"></script>
+</body>
+</html>
