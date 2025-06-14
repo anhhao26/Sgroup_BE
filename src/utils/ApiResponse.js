@@ -37,7 +37,7 @@ export class ConflictError extends ApiError {
   }
 }
 
-// tra ve suscesss
+// Dùng để trả success thống nhất format
 export class SuccessResponse {
   constructor({ message = ReasonPhrases.OK, statusCode = StatusCodes.OK, data = {} }) {
     this.statusCode = statusCode;

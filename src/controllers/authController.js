@@ -1,46 +1,12 @@
-import User from '../models/User.js';
-import {
-  hashPassword,
-  comparePassword,
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken
-} from '../utils/auth.js';
-import {
-  BadRequestError,
-  ConflictError,
-  UnauthorizedError,
-  SuccessResponse
-} from '../utils/ApiResponse.js';
+import AuthService from '../services/AuthService.js';
+import { SuccessResponse } from '../utils/ApiResponse.js';
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-};
-// dangki
+const authService = new AuthService();
+
+// POST /api/auth/register
 export async function register(req, res, next) {
   try {
-    const { username, email, password } = req.body;
-
-    // Kiểm tra trùng username/email
-    const exists = await User.findOne({ $or: [{ username }, { email }] });
-    if (exists) {
-      if (exists.username === username) throw new ConflictError('Username already registered');
-      else throw new ConflictError('Email already registered');
-    }
-
-    // Băm mật khẩu
-    const hashed = await hashPassword(password);
-
-    // Tạo user mới (role mặc định = 'user')
-    const newUser = await User.create({
-      username,
-      email,
-      password: hashed
-    });
-
+    const newUser = await authService.register(req.body);
     return new SuccessResponse({
       message: 'Register successful',
       statusCode: 201,
@@ -51,31 +17,17 @@ export async function register(req, res, next) {
   }
 }
 
-// login
+// POST /api/auth/login
 export async function login(req, res, next) {
   try {
-    const { username, password } = req.body;
-
-    // Tìm user theo username
-    const user = await User.findOne({ username });
-    if (!user) throw new BadRequestError('Invalid credentials');
-
-    // So sánh mật khẩu
-    const valid = await comparePassword(password, user.password);
-    if (!valid) throw new BadRequestError('Invalid credentials');
-
-    // Sinh token
-    const accessToken = signAccessToken(user._id);
-    const refreshToken = signRefreshToken(user._id);
-
-    // Lưu refreshToken vào DB user
-    user.refreshTokens.push(refreshToken);
-    await user.save();
-
-    // Set cookie refreshToken
-    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
-
-    // Trả về accessToken và một số thông tin cơ bản
+    const { user, accessToken, refreshToken } = await authService.login(req.body);
+    // Đưa refreshToken vào cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
     return new SuccessResponse({
       message: 'Login successful',
       data: {
@@ -88,36 +40,21 @@ export async function login(req, res, next) {
   }
 }
 
-//refresh
+// POST /api/auth/refresh-token
 export async function processNewToken(req, res, next) {
   try {
-    // Lấy refreshToken từ cookie
     const oldToken = req.cookies.refreshToken;
-    if (!oldToken) throw new UnauthorizedError('Missing refresh token');
-
-    // Verify refreshToken
-    const payload = verifyRefreshToken(oldToken);
-    const user = await User.findById(payload.id);
-    if (!user) throw new UnauthorizedError('User not found');
-
-    // Check xem token cũ có nằm trong DB không
-    if (!user.refreshTokens.includes(oldToken)) {
-      throw new UnauthorizedError('Invalid refresh token');
-    }
-
-    // Xoá token cũ → sinh token mới (Rotation)
-    user.refreshTokens = user.refreshTokens.filter(t => t !== oldToken);
-    const newAccessToken = signAccessToken(user._id);
-    const newRefreshToken = signRefreshToken(user._id);
-    user.refreshTokens.push(newRefreshToken);
-    await user.save();
-
-    // Set lại cookie mới
-    res.cookie('refreshToken', newRefreshToken, COOKIE_OPTIONS);
-
+    const { accessToken, refreshToken: newRefreshToken } = await authService.refreshToken(oldToken);
+    // Cập nhật cookie mới
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
     return new SuccessResponse({
       message: 'Token refreshed',
-      data: { accessToken: newAccessToken }
+      data: { accessToken }
     }).send(res);
   } catch (err) {
     next(err);
@@ -128,14 +65,12 @@ export async function processNewToken(req, res, next) {
 export async function logout(req, res, next) {
   try {
     const oldToken = req.cookies.refreshToken;
-    if (!oldToken) throw new BadRequestError('Missing refresh token');
-
-    // Xoá refreshToken khỏi DB
-    await User.updateOne({ _id: req.user._id }, { $pull: { refreshTokens: oldToken } });
-
-    // Xoá cookie
-    res.clearCookie('refreshToken', COOKIE_OPTIONS);
-
+    await authService.logout(req.user._id, oldToken);
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
     return new SuccessResponse({
       message: 'Logout successful'
     }).send(res);
@@ -144,11 +79,10 @@ export async function logout(req, res, next) {
   }
 }
 
-// information user
+// GET /api/users/me
 export async function me(req, res, next) {
   try {
-    // req.user đã được gán bởi authMiddleware
-    const user = req.user;
+    const user = await authService.me(req.user._id);
     return new SuccessResponse({
       message: 'Get profile successful',
       data: { user: { id: user._id, username: user.username, email: user.email, role: user.role } }

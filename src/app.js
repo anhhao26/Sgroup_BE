@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import pollRoutes from './routes/pollRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
@@ -14,8 +15,9 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Routes
-app.use('/api', authRoutes);
-app.use('/api/polls', pollRoutes);
+app.use('/api', authRoutes);       // /api/auth/register, /api/auth/login, /api/auth/refresh-token, /api/auth/logout, /api/users/me
+app.use('/api/users', userRoutes); // /api/users (admin CRUD, update profile)
+app.use('/api/polls', pollRoutes); // /api/polls/*
 
 // 404 handler (nếu không có route nào khớp)
 app.use((req, res) => {
