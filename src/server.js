@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 // Kết nối MongoDB
 connectDB();
+app.set('trust proxy', true);
 
 // Khởi động Express
 app.listen(PORT, () => {
