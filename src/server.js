@@ -11,6 +11,7 @@ connectDB();
 app.set('trust proxy', true);
 
 // Khởi động Express
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server is running at port ${PORT} on 0.0.0.0`);
 });
+
