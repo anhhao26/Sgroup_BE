@@ -20,12 +20,22 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 via SSH
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             cd ~/pollapp
-            git fetch origin main
-            git reset --hard origin/main
+            git pull origin main
+
+            # Cài lại gói nếu cần
             npm install
-            pm2 restart all
+
+            # Dừng và xóa app cũ nếu có
+            pm2 stop pollapp || true
+            pm2 delete pollapp || true
+
+            # Chạy lại app
+            pm2 start src/server.js --name pollapp
+
+            # Lưu cấu hình để tự khởi động sau reboot
+            pm2 save
           EOF
