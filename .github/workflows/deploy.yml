@@ -1,47 +1,44 @@
-name: CI/CD Deploy to EC2
+name: CI/CD Deploy to EC2 via Docker
 
 on:
   push:
     branches:
-      - main
+      - feat/pollapp
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ✅ Checkout source code
+      - name: Checkout source code
         uses: actions/checkout@v3
 
-      - name: 🔐 Setup SSH access
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: 🚀 Deploy to EC2 via SSH
+      - name: Deploy to EC2 via Docker Compose
         run: |
           ssh -o StrictHostKeyChecking=no -tt ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e  # Stop script if any command fails
+            set -e
 
             echo "🔁 Pull latest code..."
             cd ~/pollapp
-            git reset --hard origin/main
-            git pull origin main
+            git fetch origin feat/pollapp
+            git reset --hard origin/feat/pollapp
 
-            echo "🔧 Load NVM..."
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            echo "🐳 Stopping old containers..."
+            docker-compose down
 
-            echo "📦 Install dependencies..."
-            npm install
+            echo "📦 Building images..."
+            docker-compose build --pull
 
-            echo "🛑 Restarting PM2 app..."
-            pm2 stop pollapp || true
-            pm2 delete pollapp || true
-            pm2 start src/server.js --name pollapp
-            pm2 save
+            echo "🚀 Starting containers..."
+            docker-compose up -d
 
-            echo "✅ Deployment completed."
+            echo "✅ Deployment via Docker Compose completed."
+            exit 0
           EOF
