@@ -10,32 +10,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
+      - name: ✅ Checkout source code
         uses: actions/checkout@v3
 
-      - name: Setup SSH key
+      - name: 🔐 Setup SSH access
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2 via SSH
+      - name: 🚀 Deploy to EC2 via SSH
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -tt ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e  # Stop script if any command fails
+
+            echo "🔁 Pull latest code..."
             cd ~/pollapp
+            git reset --hard origin/main
             git pull origin main
 
-            # Cài lại gói nếu cần
+            echo "🔧 Load NVM..."
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            echo "📦 Install dependencies..."
             npm install
 
-            # Dừng và xóa app cũ nếu có
+            echo "🛑 Restarting PM2 app..."
             pm2 stop pollapp || true
             pm2 delete pollapp || true
-
-            # Chạy lại app
             pm2 start src/server.js --name pollapp
-
-            # Lưu cấu hình để tự khởi động sau reboot
             pm2 save
+
+            echo "✅ Deployment completed."
           EOF
