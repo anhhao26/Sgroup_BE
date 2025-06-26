@@ -14,4 +14,4 @@ This is a simple polling application built with ExpressJS.
 # Install dependencies
 npm install
 
-# qeqưeqeqưeqeqew123123132
+# hahahahaha
