@@ -1,1 +1,17 @@
-"# PoolApp-BE" "fix CI/CD a" 12313123ááaá
+# Poll App
+
+This is a simple polling application built with ExpressJS.
+
+## Features
+
+- Create poll
+- Vote on options
+- View results
+
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# qeqưeqeqưeqeqew
