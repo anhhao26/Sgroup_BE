@@ -3,17 +3,17 @@ name: CI/CD Deploy to EC2 via Docker
 on:
   push:
     branches:
-      - feat/pollapp
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
+      - name: Checkout your code
         uses: actions/checkout@v3
 
-      - name: Setup SSH key
+      - name: Install SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
@@ -25,18 +25,18 @@ jobs:
           ssh -o StrictHostKeyChecking=no -tt ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            echo " Move to app directory"
+            echo "📁  cd into project"
             cd ~/pollapp
 
-            echo " Pull latest code..."
-            git fetch origin feat/pollapp
-            git reset --hard origin/feat/pollapp
+            echo "🔁  Fetch & reset to main"
+            git fetch --all
+            git reset --hard origin/main
 
-            echo " Stopping old containers..."
-            docker-compose down
+            echo "🐳  Bring down existing stack"
+            docker-compose down || true
 
-            echo " Building & starting containers..."
+            echo "🐳  Build & recreate containers"
             docker-compose up -d --build
 
-            echo " Deployment via Docker Compose completed!"
+            echo "✅  Deployment complete!"
           EOF

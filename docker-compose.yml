@@ -1,18 +1,6 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - mongo
-    environment:
-      - NODE_ENV=development
-      - MONGO_URI=mongodb://mongo:27017/authPollApp
-    networks:
-      - webnet
-
   mongo:
     image: mongo:6
     container_name: mongo
@@ -22,8 +10,23 @@ services:
     networks:
       - webnet
 
+  app:
+    build: .
+    container_name: pollapp_app
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+    env_file:
+      - .env   
+    networks:
+      - webnet
+
   nginx:
     image: nginx:latest
+    container_name: pollapp_nginx
+    restart: always
     ports:
       - "80:80"
       - "443:443"
@@ -38,6 +41,8 @@ services:
 
   certbot:
     image: certbot/certbot:latest
+    container_name: pollapp_certbot
+    restart: always
     volumes:
       - ./certbot/www:/var/www/certbot:rw
       - ./certbot/conf:/etc/letsencrypt:rw

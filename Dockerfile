@@ -1,18 +1,18 @@
-# Sử dụng Node.js base image
-FROM node:18
+# 1. Chọn Node base image
+FROM node:18-alpine
 
-# Tạo thư mục trong container
+# 2. Tạo folder làm việc
 WORKDIR /app
 
-# Copy package.json và cài dependency
+# 3. Copy package.json + cài dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm install --production
 
-# Copy toàn bộ project vào container
+# 4. Copy toàn bộ source
 COPY . .
 
-# Expose cổng mà app của bạn dùng (8000 nếu bạn config app chạy cổng này)
+# 5. Expose port (phải khớp .env PORT, mặc định 8000)
 EXPOSE 8000
 
-# Lệnh khởi chạy app
+# 6. Khởi chạy app
 CMD ["node", "src/server.js"]
