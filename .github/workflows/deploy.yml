@@ -1,15 +1,15 @@
-name: CI/CD Deploy via Docker
+name: CI/CD Deploy to EC2 via Docker
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Setup SSH key
         run: |
@@ -21,23 +21,14 @@ jobs:
       - name: Deploy to EC2 via Docker Compose
         run: |
           ssh -T -o StrictHostKeyChecking=no \
-                  -o ServerAliveInterval=20 \
-                  -o TCPKeepAlive=no \
-                  ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-
-            cd ~/pollapp
-
-            echo "🧹 Cleanup old containers…"
-            docker-compose down --remove-orphans || true
-
-            echo "🔁 Pull latest code…"
-            git fetch origin main
-            git reset --hard origin/main
-
-            echo "🚀 Deploy via Docker Compose…"
-            docker-compose up --build --exit-code-from app -d
-
-            echo "🎉 Deployment complete!"
-            exit 0
-EOF
+            -o ServerAliveInterval=20 \
+            -o TCPKeepAlive=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          set -e
+          cd ~/pollapp
+          docker-compose down --remove-orphans || true
+          git fetch origin main
+          git reset --hard origin/main
+          docker-compose up -d --build
+          echo "🎉 Deployment complete!"
+          EOF
