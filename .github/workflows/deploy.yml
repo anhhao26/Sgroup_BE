@@ -7,6 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
@@ -19,23 +20,26 @@ jobs:
 
       - name: Deploy to EC2 via Docker Compose
         run: |
-          ssh -o StrictHostKeyChecking=no -T ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -T -o StrictHostKeyChecking=no \
+                  -o ServerAliveInterval=20 \
+                  -o TCPKeepAlive=no \
+                  ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
             cd ~/pollapp
 
-            echo "🧹 Cleanup old containers"
+            echo "🧹 Cleanup old containers…"
             docker-compose down --remove-orphans || true
             docker ps -a -q | xargs -r docker rm -f || true
 
-            echo "🔁 Pull latest code"
+            echo "🔁 Pull latest code…"
             git fetch origin main
             git reset --hard origin/main
 
-            echo "🚀 Deploy via Docker Compose"
+            echo "🚀 Deploy via Docker Compose…"
             docker-compose up -d --build
 
             echo "🎉 Deployment complete!"
-            sleep 1
+            sleep 5
             exit 0
           EOF
