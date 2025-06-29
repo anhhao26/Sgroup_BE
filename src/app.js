@@ -13,8 +13,12 @@ import errorHandler from './middlewares/errorHandler.js';
 
 const app = express();
 
-// ──────────────────────────────────────────────────────
-// 1) Render README.md ở route "/"
+// Middleware chung
+app.use(cors());
+app.use(express.json());
+app.use(cookieParser());
+
+// Hiển thị README.md ở route "/"
 app.get('/', (req, res) => {
   const mdPath = path.join(process.cwd(), 'README.md');
   fs.readFile(mdPath, 'utf8', (err, data) => {
@@ -22,7 +26,6 @@ app.get('/', (req, res) => {
       console.error('❌ Lỗi đọc README.md:', err);
       return res.status(500).send('Internal Server Error');
     }
-    // chuyển Markdown → HTML
     const html = marked(data);
     res.send(`
       <!doctype html>
@@ -30,7 +33,7 @@ app.get('/', (req, res) => {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>Poll App — README</title>
+          <title>Poll App Docs</title>
           <style>
             body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2rem; }
             pre, code { background: #f4f4f4; padding: .2rem .4rem; border-radius: 4px; }
@@ -41,28 +44,18 @@ app.get('/', (req, res) => {
     `);
   });
 });
-// ──────────────────────────────────────────────────────
-
-// Middleware chung
-app.use(cors());
-app.use(express.json());
-app.use(cookieParser());
 
 // Các route API
 app.use('/api', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/polls', pollRoutes);
 
-// 404 handler
+// Router 404
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    code: 404,
-    message: 'Route not found'
-  });
+  res.status(404).json({ success: false, code: 404, message: 'Route not found' });
 });
 
-// Error handler
+// Middleware handle lỗi
 app.use(errorHandler);
 
 export default app;
